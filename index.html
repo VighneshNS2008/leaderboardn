@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Quiz Leaderboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --hexagon-size: 40px;
+            --primary-color: #00ff00;
+            --bg-dark: #1a1a1a;
+            --card-bg: #2a2a2a;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 255, 0, 0.2);
+        }
+
+        .timer-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timer-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary-color);
+            font-family: 'Courier New', monospace;
+            background: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            min-width: 150px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .timer-btn {
+            background: linear-gradient(145deg, #006400, #008000);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .timer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
+        }
+
+        .title {
+            color: var(--primary-color);
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .settings-btn {
+            background: linear-gradient(145deg, #333, #444);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        .leaderboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .team-card {
+            background: linear-gradient(145deg, #2a2a2a, #333);
+            border: 2px solid var(--primary-color);
+            padding: 15px;
+            text-align: center;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 255, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 255, 0, 0.2);
+        }
+
+        .team-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+        }
+
+        .score {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 15px 0;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .hex-button {
+            width: var(--hexagon-size);
+            height: calc(var(--hexagon-size) * 0.866);
+            background: conic-gradient(from 120deg at 50% 50%, #006400, #008000, #006400);
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hex-button.plus {
+            background: conic-gradient(from 120deg at 50% 50%, #006400, #008000, #006400);
+        }
+
+        .hex-button.minus {
+            background: conic-gradient(from 120deg at 50% 50%, #8b0000, #a00000, #8b0000);
+        }
+
+        .hex-button:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            background: linear-gradient(145deg, #333, #444);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        .setup-modal, .settings-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+            padding: 30px;
+            border: 2px solid var(--primary-color);
+            border-radius: 15px;
+            z-index: 1001;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+
+        .setup-modal {
+            display: block;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .settings-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .settings-item input {
+            background: #333;
+            border: 1px solid var(--primary-color);
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .history-panel {
+            position: fixed;
+            right: -300px;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: #1a1a1a;
+            transition: right 0.3s ease;
+            padding: 20px;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .history-panel.open {
+            right: 0;
+        }
+
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--primary-color);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: #2a2a2a;
+        }
+
+        @keyframes scoreUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .score-updated {
+            animation: scoreUpdate 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="setupModal" class="setup-modal">
+        <h2>Quiz Setup</h2>
+        <div class="settings-item">
+            <label>Number of Teams (2-20):</label>
+            <input type="number" id="numTeams" min="2" max="20" value="10">
+        </div>
+        <button class="control-btn" onclick="initializeQuiz()">Start Quiz</button>
+    </div>
+
+    <div class="header">
+        <div class="timer-section">
+            <div class="timer-display" id="timer">00:00</div>
+            <div class="timer-controls">
+                <button class="timer-btn" id="startTimer">Start</button>
+                <button class="timer-btn" id="resetTimer">Reset</button>
+            </div>
+        </div>
+        <div class="title">LIVE LEADERBOARD</div>
+        <div>
+            <button class="control-btn" onclick="undo()">↩️ Undo</button>
+            <button class="control-btn" onclick="toggleHistory()">📜 History</button>
+            <button class="settings-btn" onclick="openSettings()">⚙️ Settings</button>
+        </div>
+    </div>
+
+    <div class="leaderboard" id="leaderboard"></div>
+
+    <div class="control-panel">
+        <button class="control-btn" onclick="saveData()">Save Scores</button>
+        <button class="control-btn" onclick="exportToCSV()">Export CSV</button>
+        <button class="control-btn" onclick="resetScores()">Reset All</button>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay"></div>
+    
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-grid" id="teamSettings"></div>
+        <div class="points-settings">
+            <div>
+                <label>Positive Points:</label>
+                <input type="number" id="positivePoints" value="25">
+            </div>
+            <div>
+                <label>Negative Points:</label>
+                <input type="number" id="negativePoints" value="10">
+            </div>
+        </div>
+        <div class="timer-settings">
+            <label>Timer Duration (minutes):</label>
+            <input type="number" id="timerDuration" value="30" min="0" step="0.5">
+        </div>
+        <button class="control-btn" onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <div class="history-panel" id="historyPanel">
+        <h3>Score History</h3>
+        <div id="historyList"></div>
+    </div>
+
+    <script>
+        let teamNames = [];
+        let scores = [];
+        let positivePoints = 25;
+        let negativePoints = 10;
+        let timerDuration = 30;
+        let timerInterval;
+        let timeLeft;
+        let history = [];
+        let numberOfTeams = 10;
+
+        function initializeQuiz() {
+            numberOfTeams = parseInt(document.getElementById('numTeams').value) || 10;
+            numberOfTeams = Math.min(Math.max(numberOfTeams, 2), 20);
+            
+            teamNames = Array.from({length: numberOfTeams}, (_, i) => `Team ${i + 1}`);
+            scores = Array(numberOfTeams).fill(0);
+            
+            loadData();
+            
+            document.getElementById('setupModal').style.display = 'none';
+            initializeLeaderboard();
+        }
+
+        function initializeLeaderboard() {
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.innerHTML = '';
+
+            for (let i = 0; i < numberOfTeams; i++) {
+                const teamCard = document.createElement('div');
+                teamCard.className = 'team-card';
+                teamCard.innerHTML = `
+                    <div class="team-name">${teamNames[i]}</div>
+                    <div class="score" id="score${i}">${scores[i]}</div>
+                    <div class="button-group">
+                        <button class="hex-button plus" onclick="updateScore(${i}, true)">+</button>
+                        <button class="hex-button minus" onclick="updateScore(${i}, false)">-</button>
+                    </div>
+                `;
+                leaderboard.appendChild(teamCard);
+            }
+        }
+
+        function triggerConfetti(x, y) {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { x, y },
+                colors: ['#00ff00', '#ffffff', '#008000']
+            });
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                teamNames,
+                scores,
+                positivePoints,
+                negativePoints,
+                timerDuration,
+                numberOfTeams,
+                history
+            };
+            localStorage.setItem('quizLeaderboard', JSON.stringify(data));
+            document.cookie = `quizData=${JSON.stringify(data)};path=/;max-age=31536000`;
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('quizLeaderboard');
+            if (saved) {
+                const data = JSON.parse(saved);
+                teamNames = data.teamNames;
+                scores = data.scores;
+                positivePoints = data.positivePoints;
+                negativePoints = data.negativePoints;
+                timerDuration = data.timerDuration || 30;
+                numberOfTeams = data.numberOfTeams || 10;
+                history = data.history || [];
+                return;
+            }
+
+            const cookies = document.cookie.split(';');
+            const quizCookie = cookies.find(c => c.trim().startsWith('quizData='));
+            if (quizCookie) {
+                const data = JSON.parse(quizCookie.split('=')[1]);
+                teamNames = data.teamNames;
+                scores = data.scores;
+                positivePoints = data.positivePoints;
+                negativePoints = data.negativePoints;
+                timerDuration = data.timerDuration || 30;
+                numberOfTeams = data.numberOf
+                timerDuration = data.timerDuration || 30;
+                numberOfTeams = data.numberOfTeams || 10;
+                history = data.history || [];
+            }
+        }
+
+        function updateScore(teamIndex, isPositive) {
+            history.push({
+                teamNames: [...teamNames],
+                scores: [...scores],
+                timestamp: new Date().toISOString()
+            });
+
+            const points = isPositive ? positivePoints : -negativePoints;
+            scores[teamIndex] += points;
+            const scoreElement = document.getElementById(`score${teamIndex}`);
+            scoreElement.textContent = scores[teamIndex];
+            scoreElement.style.color = scores[teamIndex] >= 0 ? '#00ff00' : 'red';
+            
+            scoreElement.classList.add('score-updated');
+            setTimeout(() => scoreElement.classList.remove('score-updated'), 500);
+
+            if (isPositive) {
+                const rect = scoreElement.getBoundingClientRect();
+                const x = (rect.left + rect.right) / 2 / window.innerWidth;
+                const y = (rect.top + rect.bottom) / 2 / window.innerHeight;
+                triggerConfetti(x, y);
+            }
+
+            saveToLocalStorage();
+            updateHistoryPanel();
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                const previousState = history.pop();
+                teamNames = [...previousState.teamNames];
+                scores = [...previousState.scores];
+                initializeLeaderboard();
+                saveToLocalStorage();
+                updateHistoryPanel();
+            }
+        }
+
+        function toggleHistory() {
+            const panel = document.getElementById('historyPanel');
+            panel.classList.toggle('open');
+            updateHistoryPanel();
+        }
+
+        function updateHistoryPanel() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = history.map((state, index) => `
+                <div class="history-item" onclick="restoreHistory(${index})">
+                    ${new Date(state.timestamp).toLocaleString()}
+                </div>
+            `).join('');
+        }
+
+        function restoreHistory(index) {
+            if (index < history.length) {
+                const state = history[index];
+                teamNames = [...state.teamNames];
+                scores = [...state.scores];
+                history = history.slice(0, index);
+                initializeLeaderboard();
+                saveToLocalStorage();
+                updateHistoryPanel();
+            }
+        }
+
+        function openSettings() {
+            const modal = document.getElementById('settingsModal');
+            const overlay = document.getElementById('modalOverlay');
+            const teamSettings = document.getElementById('teamSettings');
+            
+            teamSettings.innerHTML = '';
+            teamNames.forEach((name, i) => {
+                const div = document.createElement('div');
+                div.className = 'settings-item';
+                div.innerHTML = `
+                    <label>Team ${i + 1}:</label>
+                    <input type="text" value="${name}" id="team${i}">
+                `;
+                teamSettings.appendChild(div);
+            });
+
+            document.getElementById('positivePoints').value = positivePoints;
+            document.getElementById('negativePoints').value = negativePoints;
+            document.getElementById('timerDuration').value = timerDuration;
+            
+            modal.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+
+        function saveSettings() {
+            teamNames = teamNames.map((_, i) => document.getElementById(`team${i}`).value);
+            positivePoints = parseInt(document.getElementById('positivePoints').value);
+            negativePoints = parseInt(document.getElementById('negativePoints').value);
+            timerDuration = parseFloat(document.getElementById('timerDuration').value);
+
+            resetTimer();
+
+            document.getElementById('settingsModal').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+            
+            initializeLeaderboard();
+            saveToLocalStorage();
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('startTimer').textContent = 'Start';
+                return;
+            }
+            
+            const minutes = Math.floor(timerDuration);
+            const seconds = Math.round((timerDuration - minutes) * 60);
+            timeLeft = minutes * 60 + seconds;
+            
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    alert('Time is up!');
+                    document.getElementById('startTimer').textContent = 'Start';
+                }
+            }, 1000);
+
+            document.getElementById('startTimer').textContent = 'Pause';
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            const minutes = Math.floor(timerDuration);
+            const seconds = Math.round((timerDuration - minutes) * 60);
+            timeLeft = minutes * 60 + seconds;
+            updateTimerDisplay();
+            document.getElementById('startTimer').textContent = 'Start';
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timer').textContent = formatTime(timeLeft);
+        }
+
+        function resetScores() {
+            if (confirm('Are you sure you want to reset all scores?')) {
+                history.push({
+                    teamNames: [...teamNames],
+                    scores: [...scores],
+                    timestamp: new Date().toISOString()
+                });
+                scores = Array(numberOfTeams).fill(0);
+                initializeLeaderboard();
+                saveToLocalStorage();
+                updateHistoryPanel();
+            }
+        }
+
+        function saveData() {
+            saveToLocalStorage();
+            alert('Scores saved successfully!');
+        }
+
+        function exportToCSV() {
+            const data = {
+                teamNames,
+                scores,
+                positivePoints,
+                negativePoints,
+                timerDuration,
+                timestamp: new Date().toISOString()
+            };
+            
+            const csvContent = `timestamp,${data.timestamp}\n` +
+                             `positive_points,${data.positivePoints}\n` +
+                             `negative_points,${data.negativePoints}\n` +
+                             `timer_duration,${data.timerDuration}\n` +
+                             `team_names,${data.teamNames.join(',')}\n` +
+                             `scores,${data.scores.join(',')}`;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'quiz_scores.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Event Listeners
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                document.getElementById('settingsModal').style.display = 'none';
+                this.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.getElementById('settingsModal').style.display = 'none';
+                document.getElementById('modalOverlay').style.display = 'none';
+                document.getElementById('historyPanel').classList.remove('open');
+            }
+        });
+
+        // Initialize the application
+        if (!localStorage.getItem('quizLeaderboard')) {
+            document.getElementById('setupModal').style.display = 'block';
+        } else {
+            loadData();
+            document.getElementById('setupModal').style.display = 'none';
+            initializeLeaderboard();
+            resetTimer();
+        }
+    </script>
+</body>
+</html>
